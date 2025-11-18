@@ -1,0 +1,13 @@
+package com.minorproject.mailingAssistant;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class MailingAssistantApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(MailingAssistantApplication.class, args);
+	}
+
+}

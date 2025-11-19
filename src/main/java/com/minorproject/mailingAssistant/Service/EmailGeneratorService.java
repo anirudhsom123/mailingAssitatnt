@@ -1,7 +1,11 @@
 package com.minorproject.mailingAssistant.Service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minorproject.mailingAssistant.Model.EmailRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.Map;
 import java.util.Objects;
@@ -9,7 +13,19 @@ import java.util.Objects;
 @Service
 public class EmailGeneratorService {
 
-    public String GenerateEmailReply(EmailRequest emailRequest){
+    private  final WebClient webClient;
+
+    public EmailGeneratorService(WebClient.Builder webClientBuilder){
+        this.webClient=webClientBuilder.build();
+    }
+
+    @Value("${gemini.api.url}")
+    private String geminiApiUrl;
+
+    @Value("${gemini.api.key}")
+    private String geminiApiKey;
+
+    public String generateEmailReply(EmailRequest emailRequest){
     //Build prompt
         String prompt=buildPrompt(emailRequest);
 
@@ -28,11 +44,35 @@ public class EmailGeneratorService {
 
         // Do request and get response
 
+        String response=webClient.post()
+                .uri(geminiApiUrl+geminiApiKey)
+                .header("Content-Type","application/json")
+                .bodyValue(requestBody)
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
 
 
-        // return response
 
-        return null;
+        // extract and return response
+
+        return extractResponseContent(response);
+    }
+
+    private String extractResponseContent(String response) {
+        try {
+            ObjectMapper mapper=new ObjectMapper();
+            JsonNode rootNode= mapper.readTree(response);
+            return rootNode.path("candidates")
+                    .get(0)
+                    .path("content")
+                    .path("parts")
+                    .get(0)
+                    .path("text")
+                    .asText();
+        } catch(Exception e){
+            return "Error processing request: "+e.getMessage();
+        }
     }
 
     private String buildPrompt(EmailRequest emailRequest) {
